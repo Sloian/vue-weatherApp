@@ -1,25 +1,17 @@
 
 <template>
-  <button @click="clock">
-    Видалити
-  </button>
-  <form class="search-location" v-on:submit.prevent="fetchWeater">
-    <input
-      v-on:submit.prevent="fetchWeater"
-      type="text"
-      class="search"
-      placeholder="search"
-      v-model="citySearch"
-      autocomplete="off"
-    />
-  </form>
+  <input
+    @keydown.enter="WeatherCallFunc"
+    v-model="citySearch"
+    class="search"
+  >
 
     <div class="weather-wrapper">
 
       <div class="left-block-wrapper">
         <div class="info-block">
           <p id='city' class="city">{{weatherCity}}, {{weatherCountry}}</p>
-          <img class='weather-img'>
+          <img class='weather-img' :src="`http://openweathermap.org/img/w/${this.weatherImage}.png`">
           <h1 id='temp' class="temperature">{{weatherTemp}}</h1>
           <p id="main-weather" class="main-weather">{{weatherMain}}</p>
           <div class="wind-wrapper">
@@ -41,7 +33,15 @@
 
     </div>
 
-    <div class="right-block-wrapper">
+    <div class="daily-weather-wrapper">
+      <div class="daily-element" v-for="(item, index) in weatherDaily" :key="index">
+        <div class="data-time">{{DAYS[new Date(item.dt_txt).getDay()]}}</div>
+        <img class='weather-img' :src="`http://openweathermap.org/img/w/${item.weather[0].icon}.png`">
+        <div class="temp-wrapper">
+          <div class="max-temp">{{Math.floor(item.main.temp_max - 273)}}°</div>
+        </div>
+
+      </div>
     </div>
 </template>
 
@@ -52,8 +52,9 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      key: "d982b206b7125a363d94918d08ebf560",
-      defaultCity: "ternopil",
+      key: "ca16aa945ebdea4f126db5ca6372a64d",
+      cityDefault: "ternopil",
+      weather: [],
       citySearch: "",
       weatherCity: "",
       weatherCountry: "",
@@ -63,50 +64,70 @@ export default {
       weatherWind: null,
 
       weatherHourly: [],
+      DAYS: {
+        0: "Tusday",
+        1: "Monaday",
+        2: "Tuesday",
+        3: "Wednesday",
+        4: "Thursday",
+        5: "Friday",
+        6: "Saturday",
+      },
     };
   },
 
   methods: {
     async fetchWeater () {
-      const weatherNowURL = `https://api.openweathermap.org/data/2.5/weather?q=${this.citySearch || this.defaultCity}&appid=${this.key}&units=metric`;
-      //fetch weather
-      try {
-        const response = await axios.get(weatherNowURL);
+      
+      let response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${this.citySearch || this.cityDefault}&appid=${this.key}&units=metric`)
+      .catch(error => {
+        alert(error)
+      })
+
+      if (response) {
+        this.citySearch = "";
         const weather = response.data;
-        console.log(weather)
         this.weatherCity = weather.name;
         this.weatherCountry = weather.sys.country;
         this.weatherImage = weather.weather[0].icon;
-        document.querySelector('.weather-img').src="http://openweathermap.org/img/w/" + this.weatherImage + ".png";
         this.weatherTemp = Math.round(weather.main.temp);
         this.weatherMain = weather.weather[0].main;
         this.weatherWind = Math.round(weather.wind.speed);
         this.citySearch = "";
-
-      } catch (error) {
-        alert(error)
+      } else {
+        this.citySearch = "";
+        response = await axios.get(`http://api.openweathermap.org/data/2.5/weather?q=${this.cityDefault}&appid=${this.key}`);
+        const weather = response.data;
+        this.weatherCity = weather.name;
+        this.weatherCountry = weather.sys.country;
+        this.weatherImage = weather.weather[0].icon;
+        this.weatherTemp = Math.round(weather.main.temp - 273);
+        this.weatherMain = weather.weather[0].main;
+        this.weatherWind = Math.round(weather.wind.speed);
       }
+      
     },
 
     async fetchHourlyWeather(){
-      const weatherHourlyURL = `http://api.openweathermap.org/data/2.5/forecast?q=${this.citySearch || this.defaultCity}&appid=${this.key}`
-      
-      try {
-        const responce = await axios.get(weatherHourlyURL);
-        this.weatherHourly = responce.data.list;
-        console.log(this.weatherHourly[0])
-        console.log(document.querySelector('.hourly-icon'))
+      const response = await axios.get(`http://api.openweathermap.org/data/2.5/forecast?q=${this.citySearch || this.cityDefault}&appid=${this.key}`)
+      .catch();
 
-      } catch (error) {
-        alert(error)
+      if (response){
+        this.weatherHourly = response.data.list;
+        this.citySearch = "";
+      } 
+      else{
+        const response = await axios.get(`http://api.openweathermap.org/data/2.5/forecast?q=${this.cityDefault}&appid=${this.key}`);
+        this.weatherHourly = response.data.list;
+        this.citySearch = "";
       }
-      }
-    ,
 
-    clock(){
-      console.log(this.weatherHourly)
+    },
+
+    WeatherCallFunc(){
+      this.fetchWeater();
+      this.fetchHourlyWeather();
     }
-
   },
 
   mounted(){
@@ -117,17 +138,24 @@ export default {
   computed:{
     weatherHourlyCl(){
       let weatherHourlyClipped = [];
-
-      for (let i = 0; i < this.weatherHourly.length; i += 8) {
+      console.log(this.weatherHourly)
+      for (let i = 0; i < this.weatherHourly.length; i += 4) {
         weatherHourlyClipped.push(this.weatherHourly[i])
       }
 
       return weatherHourlyClipped;
+    },
 
-    }
+    weatherDaily(){
+      let weatherDaily = [];
+      for (let i = 0; i < this.weatherHourly.length; i += 8) {
+        weatherDaily.push(this.weatherHourly[i]);
+      }
+
+      return weatherDaily;
+    },
   }
-
-};
+}
 
 
 </script>
@@ -274,7 +302,7 @@ export default {
 
   /* right container */
 
-  .right-block-wrapper{
+  .daily-weather-wrapper{
     display: flex;
     justify-content: center;
     gap: 30px;
@@ -283,7 +311,7 @@ export default {
   }
 
 
-  .day-weather-wrapper{
+  .daily-element{
     display: flex;
     justify-content: center;
     align-items: center;
@@ -340,7 +368,7 @@ export default {
     .hourly-forecast-wrapper{
       order: 1;
     }
-    .right-block-wrapper{
+    .daily-weather-wrapper{
       order: 1;
     }
 
@@ -348,13 +376,13 @@ export default {
       min-width: 300px;
     }
 
-    .right-block-wrapper{
+    .daily-weather-wrapper{
       display: flex;
       flex-direction: column;
       flex-wrap: nowrap;
     }
 
-    .day-weather-wrapper{
+    .daily-element{
       width: 280px;
       padding: 30px 15px;
       font-size: 120%;
