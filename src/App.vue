@@ -66,7 +66,7 @@ export default {
       weatherHourly: [],
       DAYS: {
         0: "Tusday",
-        1: "Monaday",
+        1: "Monday",
         2: "Tuesday",
         3: "Wednesday",
         4: "Thursday",
@@ -136,11 +136,17 @@ export default {
   },
   
   computed:{
+
     weatherHourlyCl(){
       let weatherHourlyClipped = [];
-      console.log(this.weatherHourly)
-      for (let i = 0; i < this.weatherHourly.length; i += 4) {
-        weatherHourlyClipped.push(this.weatherHourly[i])
+
+      for (let i = 0; i < this.weatherHourly.length; i += 1) {
+      
+        if (i <= 9) {
+          weatherHourlyClipped.push(this.weatherHourly[i])
+        } else {
+          break
+        }
       }
 
       return weatherHourlyClipped;
